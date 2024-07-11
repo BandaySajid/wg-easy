@@ -1,26 +1,39 @@
-volumes:
-  etc_wireguard:
+version: '3.8'
 
 services:
-  wg-easy:
+  wgui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "51821:51821"  # Assuming the web UI runs on port 3000, adjust if needed
+      - 57103:57103/udp
+      - 51821:51821/tcp
+
+    volumes:
+      - wireguard-config:/etc/wireguard  # Mount WireGuard configuration
+      - ./src:/app  # Mount WireGuard configuration
+      - ./emails.json:/app/emails.json
+      - ./etc_wireguard:/etc/wireguard
+
     environment:
       # Change Language:
       # (Supports: en, ua, ru, tr, no, pl, fr, de, ca, es, ko, vi, nl, is, pt, chs, cht, it, th, hi)
-      - LANG=de
+      - LANG=en
       # ⚠️ Required:
       # Change this to your host's public address
-      - WG_HOST=raspberrypi.local
-
+      - WG_HOST=localhost
+        #- WG_HOST=
+        #- WG_ALLOWED_IPS=
+        #- WG_PORT=57103
       # Optional:
       # - PASSWORD=foobar123 (deprecated, see readme)
       # - PASSWORD_HASH=$$2y$$10$$hBCoykrB95WSzuV4fafBzOHWKu9sbyVa34GJr8VV5R/pIelfEMYyG (needs double $$, hash of 'foobar123'; see "How_to_generate_an_bcrypt_hash.md" for generate the hash)
       # - PORT=51821
-      # - WG_PORT=51820
       # - WG_CONFIG_PORT=92820
       # - WG_DEFAULT_ADDRESS=10.8.0.x
       # - WG_DEFAULT_DNS=1.1.1.1
       # - WG_MTU=1420
-      # - WG_ALLOWED_IPS=192.168.15.0/24, 10.0.1.0/24
       # - WG_PERSISTENT_KEEPALIVE=25
       # - WG_PRE_UP=echo "Pre Up" > /etc/wireguard/pre-up.txt
       # - WG_POST_UP=echo "Post Up" > /etc/wireguard/post-up.txt
@@ -28,19 +41,33 @@ services:
       # - WG_POST_DOWN=echo "Post Down" > /etc/wireguard/post-down.txt
       # - UI_TRAFFIC_STATS=true
       # - UI_CHART_TYPE=0 # (0 Charts disabled, 1 # Line chart, 2 # Area chart, 3 # Bar chart)
+      
 
-    image: ghcr.io/wg-easy/wg-easy
-    container_name: wg-easy
-    volumes:
-      - etc_wireguard:/etc/wireguard
-    ports:
-      - "51820:51820/udp"
-      - "51821:51821/tcp"
-    restart: unless-stopped
+      #SMTP CONFIG
+      #- EMAIL_CLIENT=1
+      #- SMTP_EMAIL=
+      #- SMTP_PASSWORD=
+      #- SMTP_USER=
+      #- SMTP_HOST=
+      #- SMTP_PORT=
+      #- SMTP_IS_SECURE=
+      #- EMAIL_SUBJECT=Wireguard config
+      #- EMAIL_HTML=<b> Download your config</b>
+      #- EMAIL_TEXT=Here is your wireguard config
     cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-      # - NET_RAW # ⚠️ Uncomment if using Podman 
+      - NET_ADMIN  # Required for WireGuard and iptables
     sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1  # Enable IP forwarding
+      - net.ipv6.conf.all.forwarding=1
+      
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  wireguard-config:
+    name: wireguard-config
+  etc_wireguard:
+    name: etc_wireguard
