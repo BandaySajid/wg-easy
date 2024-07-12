@@ -11,10 +11,8 @@ services:
       - 51821:51821/tcp
 
     volumes:
-      - wireguard-config:/etc/wireguard  # Mount WireGuard configuration
-      - ./src:/app  # Mount WireGuard configuration
-      - ./emails.json:/app/emails.json
-      - ./etc_wireguard:/etc/wireguard
+      - ./src:/app
+      - ./etc_wireguard:/etc/wireguard # Mount WireGuard configuration
 
     environment:
       # Change Language:
@@ -65,9 +63,3 @@ services:
 networks:
   default:
     driver: bridge
-
-volumes:
-  wireguard-config:
-    name: wireguard-config
-  etc_wireguard:
-    name: etc_wireguard

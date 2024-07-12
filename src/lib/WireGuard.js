@@ -227,10 +227,15 @@ Endpoint = ${WG_HOST}:${WG_CONFIG_PORT}`;
 
   async getClientQRCodeSVG({ clientId }) {
     const config = await this.getClientConfiguration({ clientId });
-    return QRCode.toString(config, {
+    const imgPath = path.join("/etc/wireguard/", clientId);
+    await QRCode.toFile(imgPath, config);
+
+    const svg = await QRCode.toString(config, {
       type: "svg",
       width: 512,
     });
+
+    return { img: imgPath, svg };
   }
 
   async createClient({ name }) {

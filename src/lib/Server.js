@@ -70,7 +70,6 @@ const isPasswordValid = (password) => {
 async function getClientConfig(clientId) {
   const client = await WireGuard.getClient({ clientId });
   const clientConfig = await WireGuard.getClientConfiguration({ clientId });
-  console.log("config here", clientConfig);
   const configName = client.name
     .replace(/[^a-zA-Z0-9_=+.-]/g, "-")
     .replace(/(-{2,}|-$)/g, "-")
@@ -79,7 +78,7 @@ async function getClientConfig(clientId) {
   return { configName, clientConfig };
 }
 
-const ePath = path.join(__dirname, "../", "emails.json");
+const ePath = path.resolve("/etc/wireguard/emails.json");
 
 async function getClientsEmails() {
   // path for the container, /app
@@ -133,22 +132,36 @@ function setupMailer() {
   }
 }
 
-async function sendEmail(transporter, clients, configName, clientConfig) {
+async function sendEmail(
+  transporter,
+  clients,
+  configName,
+  clientConfig,
+  imgPath,
+) {
   const client = clients[0];
-  const info = await transporter.sendMail({
+  const html = `<img src="cid:qr@wg.config_qr"/>`;
+  await transporter.sendMail({
     from: `"${config.SMTP_USER}" <${config.SMTP_EMAIL}>`, // sender address
     to: `${client.email}`, // list of receivers
     subject: config.EMAIL_SUBJECT, // Subject line
-    html: config.EMAIL_HTML, // html body
     text: config.EMAIL_TEXT, // plain text body
+    html, // html body
     attachments: [
       {
         filename: configName,
         content: clientConfig,
         contentType: "text/plain",
       },
+      {
+        filename: "qr.png",
+        path: imgPath,
+        cid: "qr@wg.config_qr",
+      },
     ],
   });
+
+  await fs.rm(imgPath);
 }
 
 module.exports = class Server {
@@ -301,7 +314,10 @@ module.exports = class Server {
         defineEventHandler(async (event) => {
           try {
             const { clients, clientId } = await readBody(event);
-            const { config, configName } = await getClientConfig(clientId);
+            const { clientConfig, configName } =
+              await getClientConfig(clientId);
+
+            const { img } = await WireGuard.getClientQRCodeSVG({ clientId });
 
             if (!this.transporter) {
               throw createError({
@@ -310,7 +326,13 @@ module.exports = class Server {
               });
             }
 
-            await sendEmail(this.transporter, clients, configName, config);
+            await sendEmail(
+              this.transporter,
+              clients,
+              configName,
+              clientConfig,
+              img, //img path
+            );
             return { success: true };
           } catch (err) {
             console.log(err);
@@ -373,7 +395,7 @@ module.exports = class Server {
         "/api/wireguard/client/:clientId/qrcode.svg",
         defineEventHandler(async (event) => {
           const clientId = getRouterParam(event, "clientId");
-          const svg = await WireGuard.getClientQRCodeSVG({ clientId });
+          const { svg } = await WireGuard.getClientQRCodeSVG({ clientId });
           setHeader(event, "Content-Type", "image/svg+xml");
           return svg;
         }),
@@ -384,7 +406,6 @@ module.exports = class Server {
           const clientId = getRouterParam(event, "clientId");
           const { configName, clientConfig } = await getClientConfig(clientId);
 
-          console.log("got client config:", clientConfig);
           setHeader(
             event,
             "Content-Disposition",

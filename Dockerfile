@@ -42,4 +42,11 @@ ENV DEBUG=Server,WireGuard
 
 # Run Web UI
 WORKDIR /app
+
+# Create emails.json if it doesn't exist
+RUN touch /etc/wireguard/emails.json || true
+
+# Ensure the permissions are correct (optional)
+RUN chmod 664 /etc/wireguard/emails.json
+
 CMD ["/usr/bin/dumb-init", "node", "server.js"]
