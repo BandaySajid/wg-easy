@@ -149,7 +149,7 @@ async function sendEmail(
     html, // html body
     attachments: [
       {
-        filename: configName,
+        filename: configName + ".conf",
         content: clientConfig,
         contentType: "text/plain",
       },
